@@ -143,6 +143,7 @@ public class Sender implements Runnable {
         this.metadata = metadata;
         this.guaranteeMessageOrder = guaranteeMessageOrder;
         this.maxRequestSize = maxRequestSize;
+        // 线程默认启动循环
         this.running = true;
         this.acks = acks;
         this.retries = retries;
@@ -271,6 +272,7 @@ public class Sender implements Runnable {
      * @param now The current POSIX time in milliseconds
      */
     void run(long now) {
+        //事务相关
         if (transactionManager != null) {
             try {
                 if (transactionManager.shouldResetProducerStateAfterResolvingSequences())
@@ -306,17 +308,20 @@ public class Sender implements Runnable {
                 transactionManager.authenticationFailed(e);
             }
         }
-
+        //发送ProducerData
         long pollTimeout = sendProducerData(now);
+        //做socket实际读写
         client.poll(pollTimeout, now);
     }
 
     private long sendProducerData(long now) {
         Cluster cluster = metadata.fetch();
         // get the list of partitions with data ready to send
+        //获取准备发送的分区列表
         RecordAccumulator.ReadyCheckResult result = this.accumulator.ready(cluster, now);
 
         // if there are any partitions whose leaders are not known yet, force metadata update
+        // 如果有的topic还不知道leader,强行更新metadata
         if (!result.unknownLeaderTopics.isEmpty()) {
             // The set of topics with unknown leader contains topics with leader election pending as well as
             // topics which may have expired. Add the topic again to metadata to ensure it is included
@@ -330,6 +335,7 @@ public class Sender implements Runnable {
         }
 
         // remove any nodes we aren't ready to send to
+        // 移除还没有准备好要发送到的node
         Iterator<Node> iter = result.readyNodes.iterator();
         long notReadyTimeout = Long.MAX_VALUE;
         while (iter.hasNext()) {
@@ -341,10 +347,13 @@ public class Sender implements Runnable {
         }
 
         // create produce requests
+        //创建produce requests
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes, this.maxRequestSize, now);
         addToInflightBatches(batches);
+        //如果producer要保证broker的消息顺序
         if (guaranteeMessageOrder) {
             // Mute all the partitions drained
+            //让所有取走的topic-partition 无效
             for (List<ProducerBatch> batchList : batches.values()) {
                 for (ProducerBatch batch : batchList)
                     this.accumulator.mutePartition(batch.topicPartition);
@@ -388,6 +397,7 @@ public class Sender implements Runnable {
             // otherwise the select time will be the time difference between now and the metadata expiry time;
             pollTimeout = 0;
         }
+        //把record batches转化为produce requests
         sendProduceRequests(batches, now);
         return pollTimeout;
     }
@@ -466,6 +476,7 @@ public class Sender implements Runnable {
         // Ensure accumulator is closed first to guarantee that no more appends are accepted after
         // breaking from the sender loop. Otherwise, we may miss some callbacks when shutting down.
         this.accumulator.close();
+        //关闭线程循环
         this.running = false;
         this.wakeup();
     }
@@ -738,12 +749,14 @@ public class Sender implements Runnable {
      */
     private void sendProduceRequests(Map<Integer, List<ProducerBatch>> collated, long now) {
         for (Map.Entry<Integer, List<ProducerBatch>> entry : collated.entrySet())
+            //根据record batches创建produce request
             sendProduceRequest(now, entry.getKey(), acks, requestTimeoutMs, entry.getValue());
     }
 
     /**
      * Create a produce request from the given record batches
      */
+    //todo
     private void sendProduceRequest(long now, int destination, short acks, int timeout, List<ProducerBatch> batches) {
         if (batches.isEmpty())
             return;

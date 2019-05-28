@@ -316,6 +316,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
     // visible for testing
     @SuppressWarnings("unchecked")
+    /**
+     * KafkaProducer 核心构造方法
+     */
     KafkaProducer(Map<String, Object> configs,
                   Serializer<K> keySerializer,
                   Serializer<V> valueSerializer,
@@ -393,6 +396,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             int deliveryTimeoutMs = configureDeliveryTimeout(config, log);
 
             this.apiVersions = new ApiVersions();
+            //record累加器 缓存record来批量发送
             this.accumulator = new RecordAccumulator(logContext,
                     config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
                     this.compressionType,
@@ -408,6 +412,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(
                     config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),
                     config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG));
+
+            //元数据
             if (metadata != null) {
                 this.metadata = metadata;
             } else {
@@ -416,8 +422,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.metadata.bootstrap(addresses, time.milliseconds());
             }
             this.errors = this.metrics.sensor("errors");
+            //发送器
             this.sender = newSender(logContext, kafkaClient, this.metadata);
             String ioThreadName = NETWORK_THREAD_PREFIX + " | " + clientId;
+            //封装发送器 执行其run方法
             this.ioThread = new KafkaThread(ioThreadName, this.sender, true);
             this.ioThread.start();
             config.logUnused();
