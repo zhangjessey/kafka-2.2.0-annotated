@@ -905,11 +905,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
             if (transactionManager != null && transactionManager.isTransactional())
                 transactionManager.maybeAddPartitionToTransaction(tp);
-
+            //添加到累加器
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                     serializedValue, headers, interceptCallback, remainingWaitMs);
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
+                //累加器已满，唤醒Sender不再阻塞在当前select()方法上
                 this.sender.wakeup();
             }
             return result.future;

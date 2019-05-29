@@ -189,25 +189,31 @@ public final class RecordAccumulator {
                                      long maxTimeToBlock) throws InterruptedException {
         // We keep track of the number of appending thread to make sure we do not miss batches in
         // abortIncompleteBatches().
+        //条数+1
         appendsInProgress.incrementAndGet();
         ByteBuffer buffer = null;
         if (headers == null) headers = Record.EMPTY_HEADERS;
         try {
             // check if we have an in-progress batch
             Deque<ProducerBatch> dq = getOrCreateDeque(tp);
+            //阻塞直到获得锁
             synchronized (dq) {
                 if (closed)
                     throw new KafkaException("Producer closed while send in progress");
+                //尝试添加到ProducerBatch
                 RecordAppendResult appendResult = tryAppend(timestamp, key, value, headers, callback, dq);
+                //添加成功则直接返回
                 if (appendResult != null)
                     return appendResult;
             }
 
             // we don't have an in-progress record batch try to allocate a new batch
+            //尝试分配一个新的batch
             byte maxUsableMagic = apiVersions.maxUsableProduceMagic();
             int size = Math.max(this.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));
             log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, tp.topic(), tp.partition());
             buffer = free.allocate(size, maxTimeToBlock);
+            //再次尝试添加，成功则返回
             synchronized (dq) {
                 // Need to check if producer is closed again after grabbing the dequeue lock.
                 if (closed)
@@ -218,12 +224,13 @@ public final class RecordAccumulator {
                     // Somebody else found us a batch, return the one we waited for! Hopefully this doesn't happen often...
                     return appendResult;
                 }
-
+                //仍然失败，创建MemoryRecords
                 MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);
                 ProducerBatch batch = new ProducerBatch(tp, recordsBuilder, time.milliseconds());
                 FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, headers, callback, time.milliseconds()));
 
                 dq.addLast(batch);
+                //添加进未完成的batches
                 incomplete.add(batch);
 
                 // Don't deallocate this buffer in the finally block as it's being used in the record batch
@@ -233,6 +240,7 @@ public final class RecordAccumulator {
         } finally {
             if (buffer != null)
                 free.deallocate(buffer);
+            //条数-1
             appendsInProgress.decrementAndGet();
         }
     }

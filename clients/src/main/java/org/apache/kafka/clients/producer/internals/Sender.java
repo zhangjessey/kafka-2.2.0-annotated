@@ -756,7 +756,6 @@ public class Sender implements Runnable {
     /**
      * Create a produce request from the given record batches
      */
-    //todo
     private void sendProduceRequest(long now, int destination, short acks, int timeout, List<ProducerBatch> batches) {
         if (batches.isEmpty())
             return;
@@ -796,13 +795,16 @@ public class Sender implements Runnable {
                 produceRecordsByPartition, transactionalId);
         RequestCompletionHandler callback = new RequestCompletionHandler() {
             public void onComplete(ClientResponse response) {
+                //处理一个产生的响应
                 handleProduceResponse(response, recordsByPartition, time.milliseconds());
             }
         };
 
         String nodeId = Integer.toString(destination);
+        //创建一个新的ClientRequest
         ClientRequest clientRequest = client.newClientRequest(nodeId, requestBuilder, now, acks != 0,
                 requestTimeoutMs, callback);
+        //将给定的发送请求排队,请求只能在就绪连接上发送
         client.send(clientRequest, now);
         log.trace("Sent produce request to {}: {}", nodeId, requestBuilder);
     }

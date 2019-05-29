@@ -452,6 +452,7 @@ public class Selector implements Selectable, AutoCloseable {
         }
 
         /* check ready keys */
+        //检查准备好的keys
         long startSelect = time.nanoseconds();
         int numReadyKeys = select(timeout);
         long endSelect = time.nanoseconds();
@@ -465,6 +466,7 @@ public class Selector implements Selectable, AutoCloseable {
                 keysWithBufferedRead.removeAll(readyKeys); //so no channel gets polled twice
                 Set<SelectionKey> toPoll = keysWithBufferedRead;
                 keysWithBufferedRead = new HashSet<>(); //poll() calls will repopulate if needed
+                //在selection keys的集合上处理任何准备好的I/O
                 pollSelectionKeys(toPoll, false, endSelect);
             }
 
@@ -532,6 +534,7 @@ public class Selector implements Selectable, AutoCloseable {
                 }
 
                 /* if channel is not ready finish prepare */
+                //如果channel没有准备好，开始准备
                 if (channel.isConnected() && !channel.ready()) {
                     channel.prepare();
                     if (channel.ready()) {
@@ -571,10 +574,12 @@ public class Selector implements Selectable, AutoCloseable {
                 }
 
                 /* if channel is ready write to any sockets that have space in their buffer and for which we have data */
+                //如果channel准备好，则写入任何在缓冲区中有空间且我们有数据的socket
                 if (channel.ready() && key.isWritable() && !channel.maybeBeginClientReauthentication(
                     () -> channelStartTimeNanos != 0 ? channelStartTimeNanos : currentTimeNanos)) {
                     Send send;
                     try {
+                        //数据写入channel
                         send = channel.write();
                     } catch (Exception e) {
                         sendFailed = true;
