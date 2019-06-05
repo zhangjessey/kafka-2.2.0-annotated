@@ -472,19 +472,28 @@ public class Sender implements Runnable {
     /**
      * Start closing the sender (won't actually complete until all data is sent out)
      */
+    /**
+     * 优雅关闭，即开始启动关闭，此操作并没有实际关闭，而是等待所有数据发送完再进行关闭。
+     */
     public void initiateClose() {
         // Ensure accumulator is closed first to guarantee that no more appends are accepted after
         // breaking from the sender loop. Otherwise, we may miss some callbacks when shutting down.
+        //首先确保accumulator先关闭，保证在跳出sender循环后，没有新的appends被接收。否则，关闭时可能会丢失一些回调。
         this.accumulator.close();
         //关闭线程循环
         this.running = false;
+        //唤醒关联send线程的selector,即使其从select方法返回
         this.wakeup();
     }
 
     /**
      * Closes the sender without sending out any pending messages.
      */
+    /**
+     * 强行关闭，即直接关闭，不管pending(没发送)的消息
+     */
     public void forceClose() {
+        //标记一下要强关
         this.forceClose = true;
         initiateClose();
     }

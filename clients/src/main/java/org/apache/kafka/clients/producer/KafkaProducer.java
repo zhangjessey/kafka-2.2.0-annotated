@@ -844,6 +844,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
         // intercept the record, which can be potentially modified; this method does not throw exceptions
+        //顺序执行所有拦截器，这个过程可能会修改record
         ProducerRecord<K, V> interceptedRecord = this.interceptors.onSend(record);
         return doSend(interceptedRecord, callback);
     }
@@ -857,6 +858,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
     /**
      * Implementation of asynchronously send a record to a topic.
+     */
+    /**
+     * 异步发送一个record给一个topic
      */
     private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
         TopicPartition tp = null;
@@ -901,6 +905,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             long timestamp = record.timestamp() == null ? time.milliseconds() : record.timestamp();
             log.trace("Sending record {} with callback {} to topic {} partition {}", record, callback, record.topic(), partition);
             // producer callback will make sure to call both 'callback' and interceptor callback
+            //producer传进来的callback在producer和interceptor都会被调用。interceptor会将其包裹到interceptCallback
             Callback interceptCallback = new InterceptorCallback<>(callback, this.interceptors, tp);
 
             if (transactionManager != null && transactionManager.isTransactional())
@@ -1148,6 +1153,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         log.info("Closing the Kafka producer with timeoutMillis = {} ms.", timeoutMs);
 
         // this will keep track of the first encountered exception
+        //无论如何并发执行多少次，都会保留第一个遇到的异常
         AtomicReference<Throwable> firstException = new AtomicReference<>();
         boolean invokedFromCallback = Thread.currentThread() == this.ioThread;
         if (timeoutMs > 0) {
