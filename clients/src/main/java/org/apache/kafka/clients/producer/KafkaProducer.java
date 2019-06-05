@@ -242,7 +242,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private final long totalMemorySize;
     private final Metadata metadata;
     private final RecordAccumulator accumulator;
+    //每个ioThread对应一个具体实现，即sender
     private final Sender sender;
+    //每个KafkaProducer对应一个ioThread
     private final Thread ioThread;
     private final CompressionType compressionType;
     private final Sensor errors;

@@ -227,6 +227,9 @@ public class Sender implements Runnable {
     /**
      * The main run loop for the sender thread
      */
+    /**
+     * sender线程循环运行
+     */
     public void run() {
         log.debug("Starting Kafka producer I/O thread.");
 
@@ -308,9 +311,9 @@ public class Sender implements Runnable {
                 transactionManager.authenticationFailed(e);
             }
         }
-        //发送ProducerData
+        //更新broker相关信息，发送ProducerData
         long pollTimeout = sendProducerData(now);
-        //做socket实际读写
+        //KafkaClient做socket实际读写
         client.poll(pollTimeout, now);
     }
 
