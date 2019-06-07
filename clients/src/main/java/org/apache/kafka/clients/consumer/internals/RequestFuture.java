@@ -196,6 +196,9 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
      * @param <S> The type of the future adapted to
      * @return The new future
      */
+    /**
+     * 将RequestFuture<T>适配成RequestFuture<S>
+     */
     public <S> RequestFuture<S> compose(final RequestFutureAdapter<T, S> adapter) {
         final RequestFuture<S> adapted = new RequestFuture<>();
         addListener(new RequestFutureListener<T>() {
@@ -212,6 +215,9 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
         return adapted;
     }
 
+    /**
+     * 通过监听器完成责任链模式，进行事件传递
+     */
     public void chain(final RequestFuture<T> future) {
         addListener(new RequestFutureListener<T>() {
             @Override

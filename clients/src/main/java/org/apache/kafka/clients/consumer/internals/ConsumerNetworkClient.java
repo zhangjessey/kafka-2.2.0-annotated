@@ -120,6 +120,9 @@ public class ConsumerNetworkClient implements Closeable {
      *                         for any reason.
      * @return A future which indicates the result of the send.
      */
+    /**
+     * 发送，但不是实际进行网络请求，直到调用poll方法。
+     */
     public RequestFuture<ClientResponse> send(Node node,
                                               AbstractRequest.Builder<?> requestBuilder,
                                               int requestTimeoutMs) {
@@ -127,6 +130,7 @@ public class ConsumerNetworkClient implements Closeable {
         RequestFutureCompletionHandler completionHandler = new RequestFutureCompletionHandler();
         ClientRequest clientRequest = client.newClientRequest(node.idString(), requestBuilder, now, true,
                 requestTimeoutMs, completionHandler);
+        //放入unsent
         unsent.put(node, clientRequest);
 
         // wakeup the client in case it is blocking in poll so that we can send the queued request
@@ -562,7 +566,7 @@ public class ConsumerNetworkClient implements Closeable {
             lock.unlock();
         }
     }
-
+    //最外层的回调类
     private class RequestFutureCompletionHandler implements RequestCompletionHandler {
         private final RequestFuture<ClientResponse> future;
         private ClientResponse response;
@@ -618,6 +622,10 @@ public class ConsumerNetworkClient implements Closeable {
 
     /*
      * A thread-safe helper class to hold requests per node that have not been sent yet
+     */
+
+    /**
+     * 线程安全的工具类，持有每个node上还没有发送的请求
      */
     private final static class UnsentRequests {
         private final ConcurrentMap<Node, ConcurrentLinkedQueue<ClientRequest>> unsent;

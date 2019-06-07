@@ -53,6 +53,10 @@ import java.util.stream.Collectors;
  * Note that pause state as well as fetch/consumed positions are not preserved when partition
  * assignment is changed whether directly by the user or through a group rebalance.
  */
+
+/**
+ * 为consumer追踪topics,partitions,offsets
+ */
 public class SubscriptionState {
     private static final String SUBSCRIPTION_EXCEPTION_MESSAGE =
             "Subscription to topics, partitions and pattern are mutually exclusive";
@@ -62,18 +66,22 @@ public class SubscriptionState {
     }
 
     /* the type of subscription */
+    //订阅模式
     private SubscriptionType subscriptionType;
 
     /* the pattern user has requested */
+    //匹配topics的正则
     private Pattern subscribedPattern;
 
     /* the list of topics the user has requested */
+    //订阅的所有topics
     private Set<String> subscription;
 
     /* the list of topics the group has subscribed to (set only for the leader on join group completion) */
     private final Set<String> groupSubscription;
 
     /* the partitions that are currently assigned, note that the order of partition matters (see FetchBuilder for more details) */
+    //当前被assigned的,每个TopicPartition对应的TopicPartitionState
     private final PartitionStates<TopicPartitionState> assignment;
 
     /* Default offset reset strategy */
@@ -107,6 +115,7 @@ public class SubscriptionState {
             throw new IllegalStateException(SUBSCRIPTION_EXCEPTION_MESSAGE);
     }
 
+    //订阅时必须有ConsumerRebalanceListener
     public void subscribe(Set<String> topics, ConsumerRebalanceListener listener) {
         if (listener == null)
             throw new IllegalArgumentException("RebalanceListener cannot be null");
@@ -126,6 +135,7 @@ public class SubscriptionState {
         changeSubscription(topics);
     }
 
+    //变更订阅
     private void changeSubscription(Set<String> topicsToSubscribe) {
         if (!this.subscription.equals(topicsToSubscribe)) {
             this.subscription = topicsToSubscribe;
