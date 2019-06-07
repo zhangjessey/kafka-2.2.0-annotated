@@ -551,9 +551,14 @@ import java.util.regex.Pattern;
  * the consumer threads can hash into these queues using the TopicPartition to ensure in-order consumption and simplify
  * commit.
  */
+
+/**
+ * 非线程安全的KafkaConsumer
+ */
 public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     private static final long NO_CURRENT_THREAD = -1L;
+    //未指定情况下生成consumer client的id
     private static final AtomicInteger CONSUMER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
     private static final String JMX_PREFIX = "kafka.consumer";
     static final long DEFAULT_CLOSE_TIMEOUT_MS = 30 * 1000;
@@ -562,16 +567,21 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     final Metrics metrics;
 
     private final Logger log;
+    //consumer唯一标识
     private final String clientId;
     private String groupId;
+    //代表broker端的GroupCoordinator
     private final ConsumerCoordinator coordinator;
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
+    //从broker端获取消息
     private final Fetcher<K, V> fetcher;
     private final ConsumerInterceptors<K, V> interceptors;
 
     private final Time time;
+    //与broker端进行网络通信
     private final ConsumerNetworkClient client;
+    //消费者消费状态
     private final SubscriptionState subscriptions;
     private final Metadata metadata;
     private final long retryBackoffMs;
@@ -582,8 +592,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     // currentThread holds the threadId of the current thread accessing KafkaConsumer
     // and is used to prevent multi-threaded access
+    //当前访问KafkaConsumer的线程id
     private final AtomicLong currentThread = new AtomicLong(NO_CURRENT_THREAD);
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
+    //重入次数
     private final AtomicInteger refcount = new AtomicInteger(0);
 
     // to keep from repeatedly scanning subscriptions in poll(), cache the result during metadata updates
