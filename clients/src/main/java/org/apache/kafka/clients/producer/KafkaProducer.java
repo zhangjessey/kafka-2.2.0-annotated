@@ -226,6 +226,10 @@ import org.slf4j.Logger;
  * <code>UnsupportedVersionException</code> when invoking an API that is not available in the running broker version.
  * </p>
  */
+
+/**
+ * 线程安全的KafkaProducer
+ */
 public class KafkaProducer<K, V> implements Producer<K, V> {
 
     private final Logger log;
@@ -335,6 +339,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             this.producerConfig = config;
             this.time = time;
             String clientId = config.getString(ProducerConfig.CLIENT_ID_CONFIG);
+            //利用原子性保证线程安全
             if (clientId.length() <= 0)
                 clientId = "producer-" + PRODUCER_CLIENT_ID_SEQUENCE.getAndIncrement();
             this.clientId = clientId;
